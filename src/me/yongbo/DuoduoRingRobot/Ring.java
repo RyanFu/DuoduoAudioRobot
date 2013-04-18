@@ -1,11 +1,18 @@
 package me.yongbo.DuoduoRingRobot;
 
 public class Ring {
+	//铃声id
 	private int id;
+	//铃声名
 	private String name;
+	//播放次数
 	private String playcnt;
+	//歌手
 	private String artist;
+	//时长
 	private String duration;
+	//下载地址
+	private String downUrl;
 	
 	public int getId() {
 		return id;
@@ -37,10 +44,16 @@ public class Ring {
 	public void setDuration(String duration) {
 		this.duration = duration;
 	}
+	public String getDownUrl() {
+		return downUrl;
+	}
+	public void setDownUrl(String downUrl) {
+		this.downUrl = downUrl;
+	}
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
-		sb.append(id).append("|").append(name).append("|").append(playcnt).append("|").append(artist).append("|").append(duration);
+		sb.append(id).append("|").append(name).append("|").append(playcnt).append("|").append(artist).append("|").append(duration).append("|").append(downUrl);
 		return sb.toString();
 	}
 	
