@@ -2,7 +2,7 @@ package me.yongbo.DuoduoRingRobot;
 
 public class Ring {
 	//铃声id
-	private int id;
+	private String id;
 	//铃声名
 	private String name;
 	//播放次数
@@ -14,10 +14,10 @@ public class Ring {
 	//下载地址
 	private String downUrl;
 	
-	public int getId() {
+	public String getId() {
 		return id;
 	}
-	public void setId(int id) {
+	public void setId(String id) {
 		this.id = id;
 	}
 	public String getName() {

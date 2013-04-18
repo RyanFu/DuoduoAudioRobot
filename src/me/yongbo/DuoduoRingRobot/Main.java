@@ -52,9 +52,9 @@ public class Main {
 		Thread thread22 = new Thread(new DuoduoRingRobotClient(22, 917));
 		thread22.start();*/
 		
-		//上次结束位置 page 391
 		
-		Thread thread23 = new Thread(new DuoduoRingRobotClient(23, 544, 600));
+		
+		Thread thread23 = new Thread(new DuoduoRingRobotClient(2, 400, 400));
 		thread23.start();
 		
 		/*

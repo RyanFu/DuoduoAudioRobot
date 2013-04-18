@@ -77,7 +77,7 @@ public class DbHelper {
 		CallableStatement cstmt = null;
 		try {
 			cstmt = conn.prepareCall("{CALL " + storedProcedure + "(?,?,?,?,?,?)}");
-			cstmt.setInt("id", ring.getId());
+			cstmt.setString("id", ring.getId());
 			cstmt.setString("name", ring.getName());
 			cstmt.setString("playcnt", ring.getPlaycnt());
 			cstmt.setString("artist", ring.getArtist());

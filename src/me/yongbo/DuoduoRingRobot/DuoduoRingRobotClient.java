@@ -24,7 +24,7 @@ import com.google.gson.JsonParser;
  * */
 public class DuoduoRingRobotClient implements Runnable {
 	public static String GET_RINGINFO_URL = "http://www.shoujiduoduo.com/ringweb/ringweb.php?type=getlist&listid=%1$d&page=%2$d";
-	public static String GET_DOWN_URL = "http://www.shoujiduoduo.com/ringweb/ringweb.php?type=geturl&act=down&rid=%1$d";
+	public static String GET_DOWN_URL = "http://www.shoujiduoduo.com/ringweb/ringweb.php?type=geturl&act=down&rid=%1$s";
 	public static String ERROR_MSG = "listId为 %1$d 的Robot发生错误，已自动停止。当前page为 %2$d";
 	public static String STATUS_MSG = "开始抓取数据，当前listId： %1$d，当前page： %2$d";
 	public static String FILE_DIR = "E:/RingData/";
@@ -33,7 +33,7 @@ public class DuoduoRingRobotClient implements Runnable {
 	private boolean errorFlag = false;
 	private int listId;
 	private int page;
-	private int endPage;
+	private int endPage = -1;
 	private int hasMore = 1;
 	private DbHelper dbHelper;
 	
@@ -41,6 +41,7 @@ public class DuoduoRingRobotClient implements Runnable {
 	 * 构造函数
 	 * @param listId 菜单ID
 	 * @param page 开始页码
+	 * @param endPage 结束页码
 	 * */
 	public DuoduoRingRobotClient(int listId, int beginPage, int endPage) {
 		this.listId = listId;
@@ -48,9 +49,13 @@ public class DuoduoRingRobotClient implements Runnable {
 		this.endPage = endPage;
 		this.dbHelper = new DbHelper();
 	}
-	
+	/**
+	 * 构造函数
+	 * @param listId 菜单ID
+	 * @param page 开始页码
+	 * */
 	public DuoduoRingRobotClient(int listId, int page) {
-		this(listId, page, 0);
+		this(listId, page, -1);
 	}
 
 	/**
@@ -58,41 +63,44 @@ public class DuoduoRingRobotClient implements Runnable {
 	 * */
 	public void getRings() {
 		String url = String.format(GET_RINGINFO_URL, listId, page);
-		String responseStr = httpGet(url);
-		hasMore = getHasmore(responseStr);
-		page = getNextPage(responseStr);
-		ringParse(responseStr.replaceAll("\\{\"hasmore\":[0-9]*,\"curpage\":[0-9]*\\},", "").replaceAll(",]", "]"));
+		String responseStr;
+		try {
+			responseStr = httpGet(url);
+			hasMore = getHasmore(responseStr);
+			page = getNextPage(responseStr);
+			ringParse(responseStr.replaceAll("\\{\"hasmore\":[0-9]*,\"curpage\":[0-9]*\\},", "").replaceAll(",]", "]"));
+		} catch(Exception e){
+			errorFlag = true;
+			//将错误写入txt
+			writeToFile(String.format(ERROR_MSG, listId, page));
+		}
 	}
 
-	public String httpGet(String webUrl){
+	/**
+	 * 发起http请求
+	 * @param webUrl 请求连接地址
+	 * */
+	public String httpGet(String webUrl) throws Exception {
 		URL url;
 		URLConnection conn;
 		StringBuilder sb = new StringBuilder();
-		String resultStr = "";
-		try {
-			url = new URL(webUrl);
-			conn = url.openConnection();
-			conn.connect();
-			InputStream is = conn.getInputStream();
-			InputStreamReader isr = new InputStreamReader(is);
-			BufferedReader bufReader = new BufferedReader(isr);
-			String lineText;
-			while ((lineText = bufReader.readLine()) != null) {
-				sb.append(lineText);
-			}
-			resultStr = sb.toString();
-		} catch (Exception e) {
-			errorFlag = true;
-			System.out.println(String.format(ERROR_MSG, listId, page));
-			//e.printStackTrace();
+		url = new URL(webUrl);
+		conn = url.openConnection();
+		conn.connect();
+		InputStream is = conn.getInputStream();
+		InputStreamReader isr = new InputStreamReader(is);
+		BufferedReader bufReader = new BufferedReader(isr);
+		String lineText;
+		while ((lineText = bufReader.readLine()) != null) {
+			sb.append(lineText);
 		}
-		return resultStr;
+		return sb.toString();
 	}
 	/**
 	 * 将json字符串转化成Ring对象，并存入txt中
 	 * @param json Json字符串
 	 * */
-	public void ringParse(String json) {
+	public void ringParse(String json) throws Exception {
 		Ring ring = null;
 		JsonElement element = new JsonParser().parse(json);
 		JsonArray array = element.getAsJsonArray();
@@ -158,7 +166,7 @@ public class DuoduoRingRobotClient implements Runnable {
 	@Override
 	public void run() {
 		while(hasMore == 1 && !errorFlag){
-			if(endPage != 0){
+			if(endPage != -1){
 				if(page > endPage) { break; }
 			}
 			System.out.println(String.format(STATUS_MSG, listId, page));
@@ -199,8 +207,11 @@ public class DuoduoRingRobotClient implements Runnable {
 		}
 		return true;
 	}
-	
-	public String getRingDownUrl(int rid){
+	/**
+	 * 获取铃声的下载地址
+	 * @param rid 铃声的id
+	 * */
+	public String getRingDownUrl(String rid) throws Exception{
 		String url = String.format(GET_DOWN_URL, rid);
 		String responseStr = httpGet(url);
 		return responseStr;
