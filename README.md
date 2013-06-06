@@ -33,3 +33,4 @@ DuoduoAudioRobot
   thread2.start(); //抓取流行金曲下的所有数据
   
   等等...
+  更详细的介绍可访问这里：http://my.oschina.net/goahead/blog/123574
