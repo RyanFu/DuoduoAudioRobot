@@ -54,7 +54,7 @@ public class Main {
 		
 		
 		
-		Thread thread23 = new Thread(new DuoduoRingRobotClient(2, 400, 400));
+		Thread thread23 = new Thread(new DuoduoRingRobotClient(2, 400));
 		thread23.start();
 		
 		/*

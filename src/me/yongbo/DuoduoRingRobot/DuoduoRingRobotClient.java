@@ -115,8 +115,8 @@ public class DuoduoRingRobotClient implements Runnable {
 			if(isAvailableRing(ring)) {
 				System.out.println(ring.toString());
 				//可选择写入数据库还是写入文本
-				//writeToFile(ring.toString());
-				writeToDatabase(ring);
+				writeToFile(ring.toString());
+				//writeToDatabase(ring);
 			}
 		}
 	}
