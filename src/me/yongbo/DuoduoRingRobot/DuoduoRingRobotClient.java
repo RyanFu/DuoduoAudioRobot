@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpStatus;
+import org.apache.commons.httpclient.URI;
 import org.apache.commons.httpclient.methods.GetMethod;
 
 import com.google.gson.Gson;
@@ -139,7 +140,8 @@ public class DuoduoRingRobotClient implements Runnable {
 			if(isAvailableRing(ring)) {
 				String type = ring.getDownUrl().substring(ring.getDownUrl().lastIndexOf("."));
 				//System.out.println(type);
-				down(ring.getDownUrl(), "E:/rings/", ring.getArtist()+ "_" +ring.getName()+ "_" +ring.getId()+type);
+				initSaveDir("E:/rings/");
+				down(ring.getDownUrl(), curDir, ring.getArtist()+ "_" +ring.getName()+ "_" +ring.getId()+type);
 				//可选择写入数据库还是写入文本
 				//writeToFile(ring.toString());
 				//writeToDatabase(ring);
@@ -255,7 +257,7 @@ public class DuoduoRingRobotClient implements Runnable {
 	 * */
 	public void down(final String imgUrl, final String folderPath,
 			final String fileName) {
-		System.out.println("开始下载:" + imgUrl);
+		System.out.println(imgUrl);
 		File destDir = new File(folderPath);
 		if (!destDir.exists()) {
 			destDir.mkdirs();
@@ -269,6 +271,7 @@ public class DuoduoRingRobotClient implements Runnable {
 				int failCount = 1;
 				do {
 					try {
+						get.setURI(new URI(imgUrl));
 						int status_code = client.executeMethod(get);
 						if (status_code == HttpStatus.SC_OK) {
 							byte[] data = readFromResponse(get);
@@ -279,8 +282,10 @@ public class DuoduoRingRobotClient implements Runnable {
 							outStream.write(data);
 							outStream.close();
 						}
+						System.err.println(status_code);
 						break;
 					} catch (Exception e) {
+						//e.printStackTrace();
 						failCount++;
 						System.err.println("对于" + imgUrl + "第" + failCount
 								+ "次下载失败,正在尝试重新下载...");
