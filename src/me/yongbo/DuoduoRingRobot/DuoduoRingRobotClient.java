@@ -4,25 +4,23 @@ import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.swing.text.html.parser.Entity;
 
 
 import org.apache.http.HttpEntity;
@@ -43,6 +41,7 @@ import com.google.gson.JsonParser;
  * 
  * */
 public class DuoduoRingRobotClient implements Runnable {
+	private final static String rootdir = "E:/rings/";
 	
 	public static String GET_RINGINFO_URL = "http://www.shoujiduoduo.com/ringweb/ringweb.php?type=getlist&listid=%1$d&page=%2$d";
 	public static String GET_DOWN_URL = "http://www.shoujiduoduo.com/ringweb/ringweb.php?type=geturl&act=down&rid=%1$s";
@@ -51,7 +50,6 @@ public class DuoduoRingRobotClient implements Runnable {
 	public static String FILE_DIR = "E:/RingData/";
 	public static String FILE_NAME = "listId=%1$d.txt";
 	
-	private boolean errorFlag = false;
 	private int listId;
 	private int page;
 	private int endPage = -1;
@@ -93,17 +91,20 @@ public class DuoduoRingRobotClient implements Runnable {
 	 * */
 	public void getRings() {
 		String url = String.format(GET_RINGINFO_URL, listId, page);
-		String responseStr;
-		try {
-			responseStr = httpGet(url);
-			hasMore = getHasmore(responseStr);
-			page = getNextPage(responseStr);
-			ringParse(responseStr.replaceAll("\\{\"hasmore\":[0-9]*,\"curpage\":[0-9]*\\},", "").replaceAll(",]", "]"));
-		} catch(Exception e){
-			errorFlag = true;
-			//将错误写入txt
-			writeToFile(String.format(ERROR_MSG, listId, page));
-		}
+		int cnt = 0;
+		do{
+			try {
+				String responseStr = httpGet(url);
+				hasMore = getHasmore(responseStr);
+				page = getNextPage(responseStr);
+				ringParse(responseStr.replaceAll("\\{\"hasmore\":[0-9]*,\"curpage\":[0-9]*\\},", "").replaceAll(",]", "]"));
+				break;
+			} catch(Exception e){
+				cnt++;
+				System.err.println("对于数据" + url + "第" + cnt
+						+ "次抓取失败,正在尝试重新抓取...");
+			}
+		} while(cnt < MAX_FAILCOUNT);
 	}
 
 	/**
@@ -127,67 +128,38 @@ public class DuoduoRingRobotClient implements Runnable {
 		return sb.toString();
 	}
 	/**
-	 * 将json字符串转化成Ring对象，并存入txt中
+	 * 将json字符串转化成Ring对象
 	 * @param json Json字符串
 	 * */
-	public void ringParse(String json) throws Exception {
+	public List<Ring> ringParse(String json) throws Exception {
+		List<Ring> rings = new ArrayList<Ring>();
 		Ring ring = null;
+		
 		JsonElement element = new JsonParser().parse(json);
 		JsonArray array = element.getAsJsonArray();
 		// 遍历数组
 		Iterator<JsonElement> it = array.iterator();
 		Gson gson = new Gson();
-		while (it.hasNext() && !errorFlag) {
+		while (it.hasNext()) {
 			JsonElement e = it.next();
 			// JsonElement转换为JavaBean对象
 			ring = gson.fromJson(e, Ring.class);
-			ring.setDownUrl(getRingDownUrl(ring.getId()));
 			if(isAvailableRing(ring)) {
+				ring.setDownUrl(getRingDownUrl(ring.getId()));
 				String type = ring.getDownUrl().substring(ring.getDownUrl().lastIndexOf("."));
-				//System.out.println(type);
-				initSaveDir("E:/rings/");
-				down(ring.getDownUrl(), folderPath, ring.getArtist()+ "_" +ring.getName()+ "_" +ring.getId()+type);
-				//可选择写入数据库还是写入文本
-				//writeToFile(ring.toString());
+				ring.setType(type);
+				rings.add(ring);
+				
+				
+				initSaveDir(rootdir);
+				down(ring.getDownUrl(), folderPath, ring.getArtist()+ "_" +ring.getName()+ "_" + ring.getId() + type);
+				//写入数据库
 				//writeToDatabase(ring);
 			}
 		}
+		return rings;
 	}
-	/**
-	 * 写入txt
-	 * @param data 字符串
-	 * */
-	public void writeToFile(String data) {
-		String path = FILE_DIR + String.format(FILE_NAME, listId);
-		File dir = new File(FILE_DIR);
-		File file = new File(path);
-		FileWriter fw = null;
-		if(!dir.exists()){
-			dir.mkdirs();
-		}
-		try {
-			if(!file.exists()){
-				file.createNewFile();
-			}
-			fw = new FileWriter(file, true);
-			fw.write(data);
-			fw.write("\r\n");
-			fw.flush();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		finally {
-			try {
-				if(fw != null){
-					fw.close();
-				}
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-	}
+	
 	/**
 	 * 写入数据库
 	 * @param ring 一个Ring的实例
@@ -198,7 +170,7 @@ public class DuoduoRingRobotClient implements Runnable {
 
 	@Override
 	public void run() {
-		while(hasMore == 1 && !errorFlag){
+		while(hasMore == 1){
 			if(endPage != -1){
 				if(page > endPage) { break; }
 			}
@@ -235,7 +207,7 @@ public class DuoduoRingRobotClient implements Runnable {
 		if(!match.find()){
 			return false;
 		}
-		if(ring.getName().length() > 50 || ring.getArtist().length() > 50 || ring.getDownUrl().length() == 0){
+		if(ring.getName().length() > 50 || ring.getArtist().length() > 50){
 			return false;
 		}
 		return true;
@@ -247,8 +219,7 @@ public class DuoduoRingRobotClient implements Runnable {
 	public String getRingDownUrl(String rid) throws Exception{
 		String url = String.format(GET_DOWN_URL, rid);
 		String responseStr = httpGet(url);
-		
-		return responseStr.substring(0, responseStr.indexOf("?") - 1);
+		return responseStr.split("\\?")[0];//responseStr.substring(0, responseStr.indexOf("?") - 1);
 	}
 	/**
 	 * 下载网络图片到本地
@@ -273,7 +244,7 @@ public class DuoduoRingRobotClient implements Runnable {
 			public void run() {
 				HttpClient client = HttpUtil.getHttpClient();
 				HttpGet get = new HttpGet(imgUrl);
-				int failCount = 1;
+				int failCount = 0;
 				do {
 					try {
 						HttpResponse response = client.execute(get);

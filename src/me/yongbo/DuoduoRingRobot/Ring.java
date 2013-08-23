@@ -14,6 +14,8 @@ public class Ring {
 	//下载地址
 	private String downUrl;
 	
+	private String type;
+	
 	public String getId() {
 		return id;
 	}
@@ -49,6 +51,13 @@ public class Ring {
 	}
 	public void setDownUrl(String downUrl) {
 		this.downUrl = downUrl;
+	}
+	
+	public String getType() {
+		return type;
+	}
+	public void setType(String type) {
+		this.type = type;
 	}
 	@Override
 	public String toString() {
