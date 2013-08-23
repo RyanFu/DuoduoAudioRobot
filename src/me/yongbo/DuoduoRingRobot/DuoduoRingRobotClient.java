@@ -8,6 +8,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.text.DecimalFormat;
@@ -21,11 +22,15 @@ import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.swing.text.html.parser.Entity;
 
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.URI;
-import org.apache.commons.httpclient.methods.GetMethod;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -141,7 +146,7 @@ public class DuoduoRingRobotClient implements Runnable {
 				String type = ring.getDownUrl().substring(ring.getDownUrl().lastIndexOf("."));
 				//System.out.println(type);
 				initSaveDir("E:/rings/");
-				down(ring.getDownUrl(), curDir, ring.getArtist()+ "_" +ring.getName()+ "_" +ring.getId()+type);
+				down(ring.getDownUrl(), folderPath, ring.getArtist()+ "_" +ring.getName()+ "_" +ring.getId()+type);
 				//可选择写入数据库还是写入文本
 				//writeToFile(ring.toString());
 				//writeToDatabase(ring);
@@ -243,7 +248,7 @@ public class DuoduoRingRobotClient implements Runnable {
 		String url = String.format(GET_DOWN_URL, rid);
 		String responseStr = httpGet(url);
 		
-		return responseStr;//.substring(0,responseStr.indexOf("&") - 1);
+		return responseStr.substring(0, responseStr.indexOf("?") - 1);
 	}
 	/**
 	 * 下载网络图片到本地
@@ -257,7 +262,7 @@ public class DuoduoRingRobotClient implements Runnable {
 	 * */
 	public void down(final String imgUrl, final String folderPath,
 			final String fileName) {
-		System.out.println(imgUrl);
+		System.out.println("开始下载:" + imgUrl);
 		File destDir = new File(folderPath);
 		if (!destDir.exists()) {
 			destDir.mkdirs();
@@ -267,14 +272,14 @@ public class DuoduoRingRobotClient implements Runnable {
 			@Override
 			public void run() {
 				HttpClient client = HttpUtil.getHttpClient();
-				GetMethod get = HttpUtil.getHttpGet(getRequestHeaders());
+				HttpGet get = new HttpGet(imgUrl);
 				int failCount = 1;
 				do {
 					try {
-						get.setURI(new URI(imgUrl));
-						int status_code = client.executeMethod(get);
-						if (status_code == HttpStatus.SC_OK) {
-							byte[] data = readFromResponse(get);
+						HttpResponse response = client.execute(get);
+						HttpEntity entity = response.getEntity();
+						if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK && entity != null) {
+							byte[] data = readFromResponse(entity);
 							String savePaht = folderPath + fileName;
 							File imageFile = new File(savePaht);
 							FileOutputStream outStream = new FileOutputStream(
@@ -282,24 +287,23 @@ public class DuoduoRingRobotClient implements Runnable {
 							outStream.write(data);
 							outStream.close();
 						}
-						System.err.println(status_code);
 						break;
 					} catch (Exception e) {
-						//e.printStackTrace();
 						failCount++;
-						System.err.println("对于" + imgUrl + "第" + failCount
+						System.err.println("对于链接" + imgUrl + "第" + failCount
 								+ "次下载失败,正在尝试重新下载...");
 					} finally {
-						get.releaseConnection();
+						
 					}
 				} while (failCount < MAX_FAILCOUNT);
 			}
 		});
 	}
-	public static byte[] readFromResponse(GetMethod get) throws Exception {
-		InputStream inStream = get.getResponseBodyAsStream();
+	
+	public static byte[] readFromResponse(HttpEntity entity) throws Exception {
+		InputStream inStream = entity.getContent();
 		ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-		long length = get.getResponseContentLength();
+		long length = entity.getContentLength();
 		// 显示文件大小格式：2个小数点显示
 		DecimalFormat df = new DecimalFormat("0.00");
 		// 总文件大小
@@ -320,7 +324,6 @@ public class DuoduoRingRobotClient implements Runnable {
 			// + fileSize;
 			// System.out.println(processText);
 		}
-		
 		System.out
 				.println("下载完成，耗时：" + (System.currentTimeMillis() - t) + "毫秒");
 		inStream.close();
