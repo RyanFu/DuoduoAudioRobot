@@ -3,9 +3,14 @@ package me.yongbo.DuoduoRingRobot;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.URL;
 import java.net.URLConnection;
 import java.text.DecimalFormat;
@@ -41,7 +46,9 @@ import com.google.gson.JsonParser;
  * 
  * */
 public class DuoduoRingRobotClient implements Runnable {
-	private final static String rootdir = "E:/rings/";
+	private final static String rootdir = "E:/rings/data/";
+	private final static String CACHE_DIR = "E:/rings/cache/";
+	private final static String CACHE_KEY = "listId%1$d-page%2$d";
 	
 	public static String GET_RINGINFO_URL = "http://www.shoujiduoduo.com/ringweb/ringweb.php?type=getlist&listid=%1$d&page=%2$d";
 	public static String GET_DOWN_URL = "http://www.shoujiduoduo.com/ringweb/ringweb.php?type=geturl&act=down&rid=%1$s";
@@ -55,7 +62,7 @@ public class DuoduoRingRobotClient implements Runnable {
 	private int endPage = -1;
 	private int hasMore = 1;
 	private DbHelper dbHelper;
-	
+	private boolean stop = false;
 	
 	protected static SimpleDateFormat sdf;
 	private static ExecutorService pool;// 线程池
@@ -95,11 +102,12 @@ public class DuoduoRingRobotClient implements Runnable {
 		do{
 			try {
 				String responseStr = httpGet(url);
+				ringParse(responseStr.replaceAll("\\{\"hasmore\":[0-9]*,\"curpage\":[0-9]*\\},", "").replaceAll(",]", "]"));
 				hasMore = getHasmore(responseStr);
 				page = getNextPage(responseStr);
-				ringParse(responseStr.replaceAll("\\{\"hasmore\":[0-9]*,\"curpage\":[0-9]*\\},", "").replaceAll(",]", "]"));
 				break;
 			} catch(Exception e){
+				e.printStackTrace();
 				cnt++;
 				System.err.println("对于数据" + url + "第" + cnt
 						+ "次抓取失败,正在尝试重新抓取...");
@@ -128,6 +136,55 @@ public class DuoduoRingRobotClient implements Runnable {
 		return sb.toString();
 	}
 	/**
+	 * 写入缓存
+	 * @param rings list数据
+	 * */
+	public void writeToCache(List<Ring> rings){
+		int cnt = 0;
+		do {
+			try {
+				File destDir = new File(CACHE_DIR);
+				if (!destDir.exists()) {
+					destDir.mkdirs();
+				}
+	            ObjectOutputStream os = new ObjectOutputStream(  
+	                    new FileOutputStream(CACHE_DIR + String.format(CACHE_KEY, listId, page)));  
+	            os.writeObject(rings);  
+	            os.close();
+	            break;
+	        } catch (Exception e) { 
+	        	e.printStackTrace();
+	        	cnt++;
+	            System.err.println("写入缓存失败,正在尝试第" + cnt + "次重新写入");
+	        } 
+		} while(cnt < MAX_FAILCOUNT);
+		
+	}
+	/**
+	 * 读取缓存
+	 * @param _listId 菜单Id
+	 * @param _page 页码
+	 * @return List数据
+	 * */
+	public List<Ring> readFromCache(final int _listId,final int _page){
+		List<Ring> rings = null;
+		int cnt = 0;
+		do {
+			try {
+				ObjectInputStream is = new ObjectInputStream(new FileInputStream(CACHE_DIR + String.format(CACHE_KEY, _listId, _page)));  
+	            rings = (List<Ring>) is.readObject();
+	            is.close();
+	            break;
+	        } catch (Exception e) { 
+	        	e.printStackTrace();
+	        	cnt++;
+	            System.err.println("读取缓存失败,正在尝试第" + cnt + "次重新读取");
+	        } 
+		} while(cnt < MAX_FAILCOUNT);
+		return rings;
+	}
+	
+	/**
 	 * 将json字符串转化成Ring对象
 	 * @param json Json字符串
 	 * */
@@ -145,18 +202,24 @@ public class DuoduoRingRobotClient implements Runnable {
 			// JsonElement转换为JavaBean对象
 			ring = gson.fromJson(e, Ring.class);
 			if(isAvailableRing(ring)) {
+				initSaveDir(rootdir); //获取存储目录
+				
 				ring.setDownUrl(getRingDownUrl(ring.getId()));
+				
 				String type = ring.getDownUrl().substring(ring.getDownUrl().lastIndexOf("."));
+				String filename = ring.getArtist()+ "_" +ring.getName()+ "_" + ring.getId() + type;
+				
+				ring.setSavePath(curDir + filename);
 				ring.setType(type);
 				rings.add(ring);
 				
-				
-				initSaveDir(rootdir);
-				down(ring.getDownUrl(), folderPath, ring.getArtist()+ "_" +ring.getName()+ "_" + ring.getId() + type);
+				down(ring.getDownUrl(), folderPath, filename);
 				//写入数据库
 				//writeToDatabase(ring);
 			}
 		}
+		//写入缓存
+		writeToCache(rings);
 		return rings;
 	}
 	
@@ -170,7 +233,7 @@ public class DuoduoRingRobotClient implements Runnable {
 
 	@Override
 	public void run() {
-		while(hasMore == 1){
+		while(hasMore == 1 && !stop){
 			if(endPage != -1){
 				if(page > endPage) { break; }
 			}
@@ -219,8 +282,9 @@ public class DuoduoRingRobotClient implements Runnable {
 	public String getRingDownUrl(String rid) throws Exception{
 		String url = String.format(GET_DOWN_URL, rid);
 		String responseStr = httpGet(url);
-		return responseStr.split("\\?")[0];//responseStr.substring(0, responseStr.indexOf("?") - 1);
+		return responseStr.split("\\?")[0];
 	}
+
 	/**
 	 * 下载网络图片到本地
 	 * 
@@ -251,8 +315,8 @@ public class DuoduoRingRobotClient implements Runnable {
 						HttpEntity entity = response.getEntity();
 						if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK && entity != null) {
 							byte[] data = readFromResponse(entity);
-							String savePaht = folderPath + fileName;
-							File imageFile = new File(savePaht);
+							String savePath = folderPath + fileName;
+							File imageFile = new File(savePath);
 							FileOutputStream outStream = new FileOutputStream(
 									imageFile);
 							outStream.write(data);

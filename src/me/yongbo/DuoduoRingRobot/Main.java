@@ -1,5 +1,7 @@
 package me.yongbo.DuoduoRingRobot;
 
+import java.util.List;
+
 public class Main {
 
 	/**
@@ -24,6 +26,8 @@ public class Main {
 		 * 网友上传：8
 		 **/
 		
-		new Thread(new DuoduoRingRobotClient(1, 0, 3)).start();
+		new Thread(new DuoduoRingRobotClient(22, 0)).start();
+		//List<Ring> rings = new DuoduoRingRobotClient(1, 1).readFromCache(1,2);
+		//System.err.println(rings.size());
 	}
 }

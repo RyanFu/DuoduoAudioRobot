@@ -1,6 +1,8 @@
 package me.yongbo.DuoduoRingRobot;
 
-public class Ring {
+import java.io.Serializable;
+
+public class Ring implements Serializable {
 	//铃声id
 	private String id;
 	//铃声名
@@ -13,6 +15,8 @@ public class Ring {
 	private String duration;
 	//下载地址
 	private String downUrl;
+	
+	private String savePath;
 	
 	private String type;
 	
@@ -58,6 +62,12 @@ public class Ring {
 	}
 	public void setType(String type) {
 		this.type = type;
+	}
+	public String getSavePath() {
+		return savePath;
+	}
+	public void setSavePath(String savePath) {
+		this.savePath = savePath;
 	}
 	@Override
 	public String toString() {
