@@ -107,7 +107,6 @@ public class DuoduoRingRobotClient implements Runnable {
 				page = getNextPage(responseStr);
 				break;
 			} catch(Exception e){
-				e.printStackTrace();
 				cnt++;
 				System.err.println("对于数据" + url + "第" + cnt
 						+ "次抓取失败,正在尝试重新抓取...");
@@ -153,7 +152,6 @@ public class DuoduoRingRobotClient implements Runnable {
 	            os.close();
 	            break;
 	        } catch (Exception e) { 
-	        	e.printStackTrace();
 	        	cnt++;
 	            System.err.println("写入缓存失败,正在尝试第" + cnt + "次重新写入");
 	        } 
@@ -241,6 +239,7 @@ public class DuoduoRingRobotClient implements Runnable {
 			getRings();
 			System.out.println(String.format("该页数据抓取完成"));
 		}
+		
 		System.out.println("ending...");
 	}
 	
@@ -327,9 +326,7 @@ public class DuoduoRingRobotClient implements Runnable {
 						failCount++;
 						System.err.println("对于链接" + imgUrl + "第" + failCount
 								+ "次下载失败,正在尝试重新下载...");
-					} finally {
-						
-					}
+					} 
 				} while (failCount < MAX_FAILCOUNT);
 			}
 		});
