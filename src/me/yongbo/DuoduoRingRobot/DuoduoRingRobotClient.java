@@ -6,7 +6,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
@@ -46,16 +45,16 @@ import com.google.gson.JsonParser;
  * 
  * */
 public class DuoduoRingRobotClient implements Runnable {
-	private final static String rootdir = "E:/rings/data/";
-	private final static String CACHE_DIR = "E:/rings/cache/";
-	private final static String CACHE_KEY = "listId%1$d-page%2$d";
+	
+	private final static String ERROR_LOG_DIR = "E:/rings/error/"; //错误日志存放目录
+	private final static String rootdir = "E:/rings/data/"; //音频存放目录
+	private final static String CACHE_DIR = "E:/rings/cache/"; //序列化数据缓存目录
+	private final static String CACHE_KEY = "listId%1$d-page%2$d"; //序列化数据缓存key
 	
 	public static String GET_RINGINFO_URL = "http://www.shoujiduoduo.com/ringweb/ringweb.php?type=getlist&listid=%1$d&page=%2$d";
 	public static String GET_DOWN_URL = "http://www.shoujiduoduo.com/ringweb/ringweb.php?type=geturl&act=down&rid=%1$s";
 	public static String ERROR_MSG = "listId为 %1$d 的Robot发生错误，已自动停止。当前page为 %2$d";
 	public static String STATUS_MSG = "开始抓取数据，当前listId： %1$d，当前page： %2$d";
-	public static String FILE_DIR = "E:/RingData/";
-	public static String FILE_NAME = "listId=%1$d.txt";
 	
 	private int listId;
 	private int page;
@@ -92,6 +91,15 @@ public class DuoduoRingRobotClient implements Runnable {
 	public DuoduoRingRobotClient(int listId, int page) {
 		this(listId, page, -1);
 	}
+	
+	public void writeToErrorLog(String error){
+		File destDir = new File(ERROR_LOG_DIR );
+		String fileName = sdf.format(new Date()) + ".txt";
+		if (!destDir.exists()) {
+			destDir.mkdirs();
+		}
+		
+	}
 
 	/**
 	 * 获取铃声
@@ -110,6 +118,7 @@ public class DuoduoRingRobotClient implements Runnable {
 				cnt++;
 				System.err.println("对于数据" + url + "第" + cnt
 						+ "次抓取失败,正在尝试重新抓取...");
+				
 			}
 		} while(cnt < MAX_FAILCOUNT);
 	}
