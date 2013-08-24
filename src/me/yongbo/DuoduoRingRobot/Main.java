@@ -26,7 +26,16 @@ public class Main {
 		 * 网友上传：8
 		 **/
 		
-		new Thread(new DuoduoRingRobotClient(22, 0)).start();
+		new Thread(new DuoduoRingRobotClient(22, 0, 100)).start();
+		new Thread(new DuoduoRingRobotClient(22, 101, 200)).start();
+		new Thread(new DuoduoRingRobotClient(22, 201, 300)).start();
+		new Thread(new DuoduoRingRobotClient(22, 301, 400)).start();
+		new Thread(new DuoduoRingRobotClient(22, 401, 500)).start();
+		new Thread(new DuoduoRingRobotClient(22, 501, 600)).start();
+		new Thread(new DuoduoRingRobotClient(22, 601, 700)).start();
+		new Thread(new DuoduoRingRobotClient(22, 701, 800)).start();
+		new Thread(new DuoduoRingRobotClient(22, 801, 900)).start();
+		new Thread(new DuoduoRingRobotClient(22, 901)).start();
 		//List<Ring> rings = new DuoduoRingRobotClient(1, 1).readFromCache(1,2);
 		//System.err.println(rings.size());
 	}
