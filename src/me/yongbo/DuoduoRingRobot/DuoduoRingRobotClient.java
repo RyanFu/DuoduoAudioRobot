@@ -6,6 +6,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
@@ -64,12 +66,14 @@ public class DuoduoRingRobotClient implements Runnable {
 	private boolean stop = false;
 	
 	protected static SimpleDateFormat sdf;
+	protected static SimpleDateFormat filename_sdf;
 	private static ExecutorService pool;// 线程池
 	protected final static int MAX_FAILCOUNT = 5; // 最多失败次数，请求某个URL失败超过这个次数将自动停止发起请求
 
 	static {
 		pool = Executors.newFixedThreadPool(20); // 固定线程池
 		sdf = new SimpleDateFormat("yyyyMMdd/HHmm/");
+		filename_sdf = new SimpleDateFormat("yyyyMMdd");
 	}
 	/**
 	 * 构造函数
@@ -94,31 +98,59 @@ public class DuoduoRingRobotClient implements Runnable {
 	
 	public void writeToErrorLog(String error){
 		File destDir = new File(ERROR_LOG_DIR );
-		String fileName = sdf.format(new Date()) + ".txt";
 		if (!destDir.exists()) {
 			destDir.mkdirs();
 		}
-		
+		FileWriter fw = null;
+		String fileName = filename_sdf.format(new Date()) + ".txt";
+		try {
+			fw = new FileWriter(ERROR_LOG_DIR + fileName, true);
+			fw.write(error);
+			fw.write("\n\n");
+			fw.flush();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		finally{
+			if(fw != null){
+				try {
+					fw.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
 	}
 
 	/**
 	 * 获取铃声
 	 * */
 	public void getRings() {
+		List<Ring> rings = null;
+//		rings = readFromCache(listId, page);
+//		if(rings != null){
+//			for (Ring ring : rings) {
+//				System.out.println(ring.getName() + "---" + ring.getArtist() + "---" + ring.getSavePath());
+//			}
+//			return;
+//		}
 		String url = String.format(GET_RINGINFO_URL, listId, page);
 		int cnt = 0;
 		do{
 			try {
 				String responseStr = httpGet(url);
-				ringParse(responseStr.replaceAll("\\{\"hasmore\":[0-9]*,\"curpage\":[0-9]*\\},", "").replaceAll(",]", "]"));
+				rings = ringParse(responseStr.replaceAll("\\{\"hasmore\":[0-9]*,\"curpage\":[0-9]*\\},", "").replaceAll(",]", "]"));
 				hasMore = getHasmore(responseStr);
 				page = getNextPage(responseStr);
+				
+				//写入缓存
+				writeToCache(rings);
 				break;
 			} catch(Exception e){
 				cnt++;
 				System.err.println("对于数据" + url + "第" + cnt
 						+ "次抓取失败,正在尝试重新抓取...");
-				
 			}
 		} while(cnt < MAX_FAILCOUNT);
 	}
@@ -173,12 +205,17 @@ public class DuoduoRingRobotClient implements Runnable {
 	 * @param _page 页码
 	 * @return List数据
 	 * */
-	public List<Ring> readFromCache(final int _listId,final int _page){
+	public List<Ring> readFromCache(int _listId, int _page){
+		File file = new File(CACHE_DIR + String.format(CACHE_KEY, _listId, _page));
+		if(!file.exists()){
+			return null;
+		}
+		
 		List<Ring> rings = null;
 		int cnt = 0;
 		do {
 			try {
-				ObjectInputStream is = new ObjectInputStream(new FileInputStream(CACHE_DIR + String.format(CACHE_KEY, _listId, _page)));  
+				ObjectInputStream is = new ObjectInputStream(new FileInputStream(file));  
 	            rings = (List<Ring>) is.readObject();
 	            is.close();
 	            break;
@@ -214,7 +251,7 @@ public class DuoduoRingRobotClient implements Runnable {
 				ring.setDownUrl(getRingDownUrl(ring.getId()));
 				
 				String type = ring.getDownUrl().substring(ring.getDownUrl().lastIndexOf("."));
-				String filename = ring.getArtist()+ "_" +ring.getName()+ "_" + ring.getId() + type;
+				String filename = ring.getId() + type;
 				
 				ring.setSavePath(curDir + filename);
 				ring.setType(type);
@@ -225,8 +262,6 @@ public class DuoduoRingRobotClient implements Runnable {
 				//writeToDatabase(ring);
 			}
 		}
-		//写入缓存
-		writeToCache(rings);
 		return rings;
 	}
 	

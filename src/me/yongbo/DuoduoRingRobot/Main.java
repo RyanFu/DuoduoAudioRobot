@@ -1,6 +1,5 @@
 package me.yongbo.DuoduoRingRobot;
 
-import java.util.List;
 
 public class Main {
 
@@ -26,7 +25,17 @@ public class Main {
 		 * 网友上传：8
 		 **/
 		
-		new Thread(new DuoduoRingRobotClient(22, 0, 100)).start();
+		new Thread(new DuoduoRingRobotClient(22, 0, 1)).start();
+//		new Thread(new DuoduoRingRobotClient(22, 11, 20)).start();
+//		new Thread(new DuoduoRingRobotClient(22, 21, 30)).start();
+//		new Thread(new DuoduoRingRobotClient(22, 31, 40)).start();
+//		new Thread(new DuoduoRingRobotClient(22, 41, 50)).start();
+//		new Thread(new DuoduoRingRobotClient(22, 51, 60)).start();
+//		new Thread(new DuoduoRingRobotClient(22, 61, 70)).start();
+//		new Thread(new DuoduoRingRobotClient(22, 71, 80)).start();
+//		new Thread(new DuoduoRingRobotClient(22, 81, 90)).start();
+//		new Thread(new DuoduoRingRobotClient(22, 91, 100)).start();
+		/*
 		new Thread(new DuoduoRingRobotClient(22, 101, 200)).start();
 		new Thread(new DuoduoRingRobotClient(22, 201, 300)).start();
 		new Thread(new DuoduoRingRobotClient(22, 301, 400)).start();
@@ -35,8 +44,9 @@ public class Main {
 		new Thread(new DuoduoRingRobotClient(22, 601, 700)).start();
 		new Thread(new DuoduoRingRobotClient(22, 701, 800)).start();
 		new Thread(new DuoduoRingRobotClient(22, 801, 900)).start();
-		new Thread(new DuoduoRingRobotClient(22, 901)).start();
-		//List<Ring> rings = new DuoduoRingRobotClient(1, 1).readFromCache(1,2);
-		//System.err.println(rings.size());
+		new Thread(new DuoduoRingRobotClient(22, 901, 1000)).start();
+		new Thread(new DuoduoRingRobotClient(22, 1001, 1100)).start();
+		new Thread(new DuoduoRingRobotClient(22, 1101, 1200)).start();
+		new Thread(new DuoduoRingRobotClient(22, 1201)).start();*/
 	}
 }
